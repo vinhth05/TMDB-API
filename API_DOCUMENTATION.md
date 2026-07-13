@@ -135,14 +135,385 @@ Toàn bộ API đều trả về một bộ khung JSON chuẩn mực.
 - **Path Parameters:**
   - `id` (integer, bắt buộc): Mã ID của phim trên TMDB.
 - **Ví Dụ Gọi:** `GET /preview/299534`
+- **Ví Dụ Trả Về:**
+```json
+{
+  "success": true,
+  "message": "Success",
+  "data": {
+    "provider": "TMDB",
+    "movie": {
+      "tmdbId": 299534,
+      "imdbId": "tt4154796",
+      "title": "Avengers: Endgame",
+      "originalTitle": "Avengers: Endgame",
+      "originalLanguage": "en",
+      "overview": "Sau những sự kiện tàn khốc của Avengers: Infinity War...",
+      "tagline": "Part of the journey is the end.",
+      "status": "Released",
+      "runtime": 181,
+      "adult": false,
+      "video": false,
+      "popularity": 145.2,
+      "voteAverage": 8.3,
+      "voteCount": 20000,
+      "budget": 356000000,
+      "revenue": 2797800564,
+      "releaseDate": "2019-04-24",
+      "homepage": "https://www.marvel.com/movies/avengers-endgame",
+      "poster": "https://image.tmdb.org/t/p/original/or06FN3Dka5tukK1e9sl16pB3iy.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/original/7RyHsO4yDXtBv1zUU3mTpHeQ0d5.jpg"
+    },
+    "genres": [
+      {
+        "genreId": 12,
+        "genreName": "Adventure"
+      },
+      {
+        "genreId": 878,
+        "genreName": "Science Fiction"
+      },
+      {
+        "genreId": 28,
+        "genreName": "Action"
+      }
+    ],
+    "casts": [
+      {
+        "tmdbPersonId": 3223,
+        "name": "Robert Downey Jr.",
+        "originalName": "Robert Downey Jr.",
+        "character": "Tony Stark / Iron Man",
+        "gender": 2,
+        "popularity": 50.5,
+        "profileImage": "https://image.tmdb.org/t/p/original/im9SAqJPZKEbVZGmj5XOtp4AHd1.jpg",
+        "castOrder": 0,
+        "knownForDepartment": "Acting"
+      }
+    ],
+    "crew": [
+      {
+        "tmdbPersonId": 19271,
+        "name": "Anthony Russo",
+        "originalName": "Anthony Russo",
+        "job": "Director",
+        "department": "Directing",
+        "gender": 2,
+        "popularity": 15.2,
+        "profileImage": "https://image.tmdb.org/t/p/original/fIfI0tS4XbUe3rR6QW6UvJt1u.jpg"
+      }
+    ],
+    "directors": [
+      {
+        "tmdbPersonId": 19271,
+        "name": "Anthony Russo",
+        "job": "Director",
+        "profileImage": "https://image.tmdb.org/t/p/original/fIfI0tS4XbUe3rR6QW6UvJt1u.jpg"
+      }
+    ],
+    "writers": [
+      {
+        "tmdbPersonId": 13608,
+        "name": "Christopher Markus",
+        "job": "Screenplay",
+        "profileImage": null
+      }
+    ],
+    "producers": [
+      {
+        "tmdbPersonId": 10850,
+        "name": "Kevin Feige",
+        "job": "Producer",
+        "profileImage": null
+      }
+    ],
+    "trailers": [
+      {
+        "iso_639_1": "en",
+        "iso_3166_1": "US",
+        "name": "Official Trailer",
+        "key": "TcMBFSGVi1c",
+        "site": "YouTube",
+        "size": 1080,
+        "type": "Trailer",
+        "official": true,
+        "published_at": "2019-03-14T12:00:00.000Z",
+        "id": "5c8a4d5b0e0a2671c6680455"
+      }
+    ],
+    "images": {
+      "backdrops": [],
+      "posters": [],
+      "logos": []
+    },
+    "keywords": [
+      {
+        "id": 1701,
+        "name": "hero"
+      }
+    ],
+    "productionCompanies": [
+      {
+        "id": 420,
+        "name": "Marvel Studios",
+        "logo": "https://image.tmdb.org/t/p/original/hUzeosd33nzE5MCNsZxCGEKTXaQ.png",
+        "originCountry": "US"
+      }
+    ],
+    "productionCountries": [
+      {
+        "isoCode": "US",
+        "countryName": "United States of America"
+      }
+    ],
+    "spokenLanguages": [
+      {
+        "isoCode": "en",
+        "englishName": "English",
+        "nativeName": "English"
+      }
+    ],
+    "externalIds": {
+      "imdb": "tt4154796",
+      "facebook": "avengers",
+      "instagram": "avengers",
+      "twitter": "Avengers",
+      "wikidata": "Q23781155"
+    },
+    "collection": {
+      "collectionId": 86311,
+      "collectionName": "The Avengers Collection",
+      "poster": "https://image.tmdb.org/t/p/original/yF1eOkaYvwiORauRCPWznV9xVvi.jpg",
+      "backdrop": "https://image.tmdb.org/t/p/original/zuW6fOiusv4X9nnW3paHGfXcSll.jpg"
+    },
+    "similarMovies": [
+      {
+        "tmdbId": 24428,
+        "title": "The Avengers",
+        "poster": "https://image.tmdb.org/t/p/original/RYMX2wcKCBAr24UyPD7xrmstKX.jpg",
+        "backdrop": "https://image.tmdb.org/t/p/original/nNmJRkg8wWnRmzQDe2FwKbPIsJV.jpg"
+      }
+    ],
+    "watchProviders": {},
+    "reviews": [],
+    "translations": [],
+    "releaseDates": [],
+    "alternativeTitles": [],
+    "changeHistory": []
+  }
+}
+```
 
 ### 6.3 Các API Nhỏ Lẻ (Standalone)
-- **Lấy Danh Sách Diễn Viên/Đoàn Phim:** `GET /movie/{id}/credits`
-- **Lấy Danh Sách Video/Trailer:** `GET /movie/{id}/videos`
-- **Lấy Hình Ảnh:** `GET /movie/{id}/images`
-- **Lấy Danh Sách Thể Loại (Genres):** `GET /genres`
-- **Gợi Ý Tìm Kiếm Từ Khóa (Tags Autocomplete):** `GET /search/keyword?keyword=hero`
-- **Lấy Phim Đang Hot:** `GET /popular`
+
+#### 6.3.1 Lấy Danh Sách Diễn Viên/Đoàn Phim
+- **Mục Đích:** Lấy danh sách diễn viên và đoàn làm phim đã chuẩn hóa.
+- **URL:** `/movie/{id}/credits`
+- **Method:** `GET`
+- **Ví Dụ Trả Về:**
+```json
+{
+  "success": true,
+  "message": "Success",
+  "data": {
+    "casts": [
+      {
+        "tmdbPersonId": 3223,
+        "name": "Robert Downey Jr.",
+        "originalName": "Robert Downey Jr.",
+        "character": "Tony Stark / Iron Man",
+        "gender": 2,
+        "popularity": 50.5,
+        "profileImage": "https://image.tmdb.org/t/p/original/im9SAqJPZKEbVZGmj5XOtp4AHd1.jpg",
+        "castOrder": 0,
+        "knownForDepartment": "Acting"
+      }
+    ],
+    "crew": [
+      {
+        "tmdbPersonId": 19271,
+        "name": "Anthony Russo",
+        "originalName": "Anthony Russo",
+        "job": "Director",
+        "department": "Directing",
+        "gender": 2,
+        "popularity": 15.2,
+        "profileImage": "https://image.tmdb.org/t/p/original/fIfI0tS4XbUe3rR6QW6UvJt1u.jpg"
+      }
+    ],
+    "directors": [
+      {
+        "tmdbPersonId": 19271,
+        "name": "Anthony Russo",
+        "job": "Director",
+        "profileImage": "https://image.tmdb.org/t/p/original/fIfI0tS4XbUe3rR6QW6UvJt1u.jpg"
+      }
+    ],
+    "writers": [
+      {
+        "tmdbPersonId": 13608,
+        "name": "Christopher Markus",
+        "job": "Screenplay",
+        "profileImage": null
+      }
+    ],
+    "producers": [
+      {
+        "tmdbPersonId": 10850,
+        "name": "Kevin Feige",
+        "job": "Producer",
+        "profileImage": null
+      }
+    ]
+  }
+}
+```
+
+#### 6.3.2 Lấy Danh Sách Video/Trailer
+- **Mục Đích:** Lấy danh sách video (chỉ lấy các video từ YouTube thuộc loại Trailer, Teaser, Clip, Featurette, Behind the Scenes).
+- **URL:** `/movie/{id}/videos`
+- **Method:** `GET`
+- **Ví Dụ Trả Về:**
+```json
+{
+  "success": true,
+  "message": "Success",
+  "data": [
+    {
+      "iso_639_1": "en",
+      "iso_3166_1": "US",
+      "name": "Official Trailer",
+      "key": "TcMBFSGVi1c",
+      "site": "YouTube",
+      "size": 1080,
+      "type": "Trailer",
+      "official": true,
+      "published_at": "2019-03-14T12:00:00.000Z",
+      "id": "5c8a4d5b0e0a2671c6680455"
+    }
+  ]
+}
+```
+
+#### 6.3.3 Lấy Hình Ảnh
+- **Mục Đích:** Lấy danh sách hình nền (backdrops), poster và logo của phim.
+- **URL:** `/movie/{id}/images`
+- **Method:** `GET`
+- **Ví Dụ Trả Về:**
+```json
+{
+  "success": true,
+  "message": "Success",
+  "data": {
+    "backdrops": [
+      {
+        "aspect_ratio": 1.778,
+        "height": 1080,
+        "iso_639_1": null,
+        "file_path": "https://image.tmdb.org/t/p/original/7RyHsO4yDXtBv1zUU3mTpHeQ0d5.jpg",
+        "vote_average": 5.3,
+        "vote_count": 4,
+        "width": 1920
+      }
+    ],
+    "posters": [
+      {
+        "aspect_ratio": 0.667,
+        "height": 1500,
+        "iso_639_1": "en",
+        "file_path": "https://image.tmdb.org/t/p/original/or06FN3Dka5tukK1e9sl16pB3iy.jpg",
+        "vote_average": 5.2,
+        "vote_count": 8,
+        "width": 1000
+      }
+    ],
+    "logos": []
+  }
+}
+```
+
+#### 6.3.4 Lấy Danh Sách Thể Loại (Genres)
+- **Mục Đích:** Lấy danh sách thể loại phim.
+- **URL:** `/genres`
+- **Method:** `GET`
+- **Ví Dụ Trả Về:**
+```json
+{
+  "success": true,
+  "message": "Success",
+  "data": [
+    {
+      "id": 28,
+      "name": "Action"
+    },
+    {
+      "id": 12,
+      "name": "Adventure"
+    }
+  ]
+}
+```
+
+#### 6.3.5 Gợi Ý Tìm Kiếm Từ Khóa (Tags Autocomplete)
+- **Mục Đích:** Gợi ý danh sách keyword tag khi người dùng gõ tìm kiếm.
+- **URL:** `/search/keyword`
+- **Method:** `GET`
+- **Query Parameters:**
+  - `keyword` (string, bắt buộc): Từ khóa cần tìm.
+- **Ví Dụ Gọi:** `GET /search/keyword?keyword=hero`
+- **Ví Dụ Trả Về:**
+```json
+{
+  "success": true,
+  "message": "Success",
+  "data": {
+    "page": 1,
+    "results": [
+      {
+        "id": 1701,
+        "name": "hero"
+      },
+      {
+        "id": 14534,
+        "name": "superhero"
+      }
+    ],
+    "total_pages": 1,
+    "total_results": 2
+  }
+}
+```
+
+#### 6.3.6 Lấy Phim Đang Hot
+- **Mục Đích:** Lấy danh sách phim phổ biến hiện tại.
+- **URL:** `/popular`
+- **Method:** `GET`
+- **Query Parameters:**
+  - `page` (integer, tùy chọn): Số trang, mặc định là 1.
+- **Ví Dụ Trả Về:**
+```json
+{
+  "success": true,
+  "message": "Success",
+  "data": {
+    "page": 1,
+    "results": [
+      {
+        "tmdbId": 299534,
+        "title": "Avengers: Endgame",
+        "originalTitle": "Avengers: Endgame",
+        "releaseDate": "2019-04-24",
+        "poster": "https://image.tmdb.org/t/p/original/or06FN3Dka5tukK1e9sl16pB3iy.jpg",
+        "backdrop": "https://image.tmdb.org/t/p/original/7RyHsO4yDXtBv1zUU3mTpHeQ0d5.jpg",
+        "overview": "Sau những sự kiện tàn khốc của Avengers: Infinity War...",
+        "popularity": 145.2
+      }
+    ],
+    "total_pages": 100,
+    "total_results": 2000
+  }
+}
+```
 
 ---
 
