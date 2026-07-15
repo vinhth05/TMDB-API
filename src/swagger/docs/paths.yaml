@@ -195,11 +195,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
-  /api/tmdb/movies/latest-top10:
+  /api/tmdb/movies/latest-top20:
     get:
-      summary: Get Top 10 Latest Movies
+      summary: Get Top 20 Latest Movies
       tags: [Movie Lists]
-      description: Returns the top 10 most recently added movies to TMDB (cached by background job).
+      security:
+        - ApiKeyAuth: []
+      description: Returns the top 20 most recently added movies to TMDB (cached by background job).
       parameters:
         - in: query
           name: limit
