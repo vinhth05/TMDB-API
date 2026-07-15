@@ -17,7 +17,10 @@ module.exports = {
     token: process.env.TMDB_TOKEN,
   },
   cache: {
-    ttl: parseInt(process.env.CACHE_TTL || '3600', 10)
+    ttl: parseInt(process.env.CACHE_TTL || '3600', 10),
+    searchTtl: parseInt(process.env.CACHE_SEARCH_TTL || '600', 10),
+    movieTtl: parseInt(process.env.CACHE_MOVIE_TTL || '3600', 10),
+    referenceTtl: parseInt(process.env.CACHE_REFERENCE_TTL || '86400', 10)
   },
   security: {
     apiKey: process.env.API_KEY || 'lorafilm-secret-key'

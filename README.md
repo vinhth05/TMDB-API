@@ -1,67 +1,107 @@
 # TMDB Integration API
 
-An independent, stateless external adapter that retrieves, aggregates, and normalizes movie data from The Movie Database (TMDB) for the Movie Booking System.
+This project is deployed as a standalone TMDB integration service for the LoraFilm movie-ticket system. It acts as an integration adapter between LoraFilm and TMDB to normalize external metadata specifically for LoraFilm's requirements without acting as a raw 1:1 proxy.
 
-## Features
-
-- **Concurrent Data Fetching:** Utilizes `Promise.all()` to gather movie details, credits, images, videos, and more simultaneously.
-- **Data Normalization:** Restructures TMDB data into a single, clean JSON structure required by the Movie Service.
-- **Caching:** Implements in-memory Node Cache with a 1-hour TTL to reduce redundant TMDB API calls.
-- **Error Handling & Resilience:** Axios client includes retry logic and timeout handling.
-- **Security:** Integrated `helmet`, `cors`, and `express-rate-limit`.
+## Architecture Overview
+- **Runtime:** Node.js, Express
+- **Process Manager:** PM2
+- **Proxy:** Nginx
+- **Architecture Layers:** Routes -> Middlewares (Validation, Auth, Errors) -> Controllers -> Services (caching injected) -> Utils/Mappers -> TMDB Client
 
 ## Installation
 
-1. Clone the repository and install dependencies:
-   ```bash
-   npm install
-   ```
+```bash
+npm install
+# or
+npm ci
+```
 
-2. Configure environment variables:
-   Create a `.env` file based on `.env.example`:
-   ```bash
-   cp .env.example .env
-   ```
-   Provide your `TMDB_TOKEN`.
+## Environment Variables
 
-## Running the API
+Copy `.env.example` to `.env` and fill in your values. Do not commit `.env` to Git.
 
-Start in development mode (with auto-reload):
+```env
+NODE_ENV=development
+PORT=9005
+
+API_KEY=your-internal-api-key
+
+TMDB_TOKEN=your-tmdb-read-access-token
+TMDB_BASE_URL=https://api.themoviedb.org/3
+TMDB_IMAGE_BASE=https://image.tmdb.org/t/p
+TMDB_IMAGE_SIZE=original
+TMDB_DEFAULT_LANGUAGE=vi-VN
+TMDB_FALLBACK_LANGUAGE=en-US
+TMDB_TIMEOUT=10000
+
+CACHE_TTL=3600
+CACHE_SEARCH_TTL=600
+CACHE_MOVIE_TTL=3600
+CACHE_REFERENCE_TTL=86400
+```
+
+## Development Startup
+
 ```bash
 npm run dev
 ```
 
-Start in production mode:
+## Production Startup (PM2)
+
 ```bash
-npm start
+pm2 start ecosystem.config.js --env production
 ```
 
-## API Documentation
+## Deployment Base URL
+
+Production URL: `https://tmdb-api.nyanmovie.site`
+
+## Authentication Usage
+
+All endpoints except `/health` and Swagger docs require an API key passed in the header:
+
+```http
+x-api-key: your-internal-api-key
+```
+
+**SECURITY WARNING:** The `x-api-key` must NEVER be exposed in frontend public React/Vite bundles. Requests to this API should pass through the LoraFilm API Gateway or Movie Service.
+
+## Swagger Documentation
 
 Swagger UI is available at:
-`http://localhost:9001/api-docs`
+`http://localhost:9005/api-docs` (Development)
+`https://tmdb-api.nyanmovie.site/api-docs` (Production)
 
-### Example Endpoints
+## Endpoint Categories
 
-- **Health Check:** `GET /health`
-- **Search:** `GET /api/import/search?keyword=Inception&page=1`
-- **Preview (Aggregate):** `GET /api/import/preview/27205`
-- **Person:** `GET /api/import/person/287`
-- **Genres:** `GET /api/import/genres`
-- **Popular Movies:** `GET /api/import/popular`
+- **Health:** `/health`
+- **Search:** `/api/import/search`
+- **Movie Import:** `/api/import/movies/{tmdbId}/bundle`
+- **Movie Resources:** `/api/import/movies/{tmdbId}/credits`, `/videos`, `/images`, `/keywords`, `/release-dates`, `/translations`, `/alternative-titles`, `/external-ids`
+- **Movie Discovery:** `/api/import/discover/movies`, `/popular`, `/upcoming`, `/trending`, etc.
+- **People:** `/api/import/people/search`, `/people/{id}`
+- **Reference Data:** `/api/import/genres`, `/api/import/configuration`, `/api/import/find`
 
-## Folder Structure
+## Cache Behavior
 
+The API uses an in-memory local node-cache. The cache resets upon server restart. Keys are generated deterministically based on endpoint, TMDB ID, languages, and query filters.
+
+## Language Fallback Behavior
+
+The API defaults to `vi-VN`. Critical missing fields in localized responses (like overviews or primary trailers) are padded using the `en-US` fallback language without overwriting existing valid Vietnamese data. 
+
+## Error Response Conventions
+
+Errors are mapped securely without exposing upstream secrets. Example structure:
+
+```json
+{
+  "success": false,
+  "errorCode": "TMDB_RESOURCE_NOT_FOUND",
+  "message": "The resource you requested could not be found.",
+  "details": null,
+  "timestamp": "2026-07-13T16:00:00.000Z"
+}
 ```
-src/
-├── cache/            # Node-cache implementation
-├── clients/          # Axios TMDB Client setup
-├── config/           # Configuration and Environment variable loader
-├── controllers/      # Route handlers
-├── middlewares/      # Error handler, Validation middleware
-├── routes/           # API routes definition
-├── services/         # TMDB interaction and aggregation logic
-├── swagger/          # Swagger UI configuration
-└── utils/            # Data normalization helpers
-```
-#
+
+For frontend integration workflows, please see [docs/FRONTEND_INTEGRATION.md](./docs/FRONTEND_INTEGRATION.md).

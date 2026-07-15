@@ -1,0 +1,256 @@
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: 'Provide your API Key to access endpoints'
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          description: Can be an object or array depending on the endpoint
+        meta:
+          type: object
+          properties:
+            timestamp:
+              type: string
+              format: date-time
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        errorCode:
+          type: string
+          example: TMDB_MOVIE_NOT_FOUND
+        message:
+          type: string
+          example: Movie not found on TMDB
+        details:
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalPages:
+          type: integer
+        totalResults:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrevious:
+          type: boolean
+    MovieListItem:
+      type: object
+      properties:
+        tmdbId:
+          type: integer
+        title:
+          type: string
+        originalTitle:
+          type: string
+        overview:
+          type: string
+        releaseDate:
+          type: string
+        releaseYear:
+          type: integer
+        posterPath:
+          type: string
+        posterUrl:
+          type: string
+        backdropPath:
+          type: string
+        backdropUrl:
+          type: string
+        genreIds:
+          type: array
+          items:
+            type: integer
+        voteAverage:
+          type: number
+        voteCount:
+          type: integer
+    MoviePreview:
+      type: object
+      properties:
+        tmdbId:
+          type: integer
+        imdbId:
+          type: string
+        title:
+          type: string
+        originalTitle:
+          type: string
+        tagline:
+          type: string
+        overview:
+          type: string
+        originalLanguage:
+          type: string
+        spokenLanguages:
+          type: array
+          items:
+            type: object
+        countries:
+          type: array
+          items:
+            type: object
+        runtimeMinutes:
+          type: integer
+        releaseDate:
+          type: string
+        status:
+          type: string
+        adult:
+          type: boolean
+        homepage:
+          type: string
+        budget:
+          type: integer
+        revenue:
+          type: integer
+        popularity:
+          type: number
+        voteAverage:
+          type: number
+        voteCount:
+          type: integer
+        poster:
+          type: object
+        backdrop:
+          type: object
+        genres:
+          type: array
+          items:
+            type: object
+        productionCompanies:
+          type: array
+          items:
+            type: object
+    MovieImportBundle:
+      type: object
+      properties:
+        movie:
+          $ref: '#/components/schemas/MoviePreview'
+        genres:
+          type: array
+        credits:
+          type: object
+        media:
+          type: object
+        videos:
+          type: object
+        releaseInfo:
+          type: object
+        translations:
+          type: array
+        alternativeTitles:
+          type: array
+        keywords:
+          type: array
+        externalIds:
+          type: object
+        productionCompanies:
+          type: array
+        metadata:
+          type: object
+    CreditPerson:
+      type: object
+      properties:
+        tmdbPersonId:
+          type: integer
+        name:
+          type: string
+        profileUrl:
+          type: string
+        job:
+          type: string
+        department:
+          type: string
+    Video:
+      type: object
+      properties:
+        tmdbVideoId:
+          type: string
+        name:
+          type: string
+        site:
+          type: string
+        type:
+          type: string
+        url:
+          type: string
+        embedUrl:
+          type: string
+        official:
+          type: boolean
+        language:
+          type: string
+    ImageAsset:
+      type: object
+      properties:
+        path:
+          type: string
+        url:
+          type: string
+        thumbnailUrl:
+          type: string
+        language:
+          type: string
+    ReleaseInformation:
+      type: object
+      properties:
+        preferredCountry:
+          type: string
+        preferredRelease:
+          type: object
+        countries:
+          type: array
+    Translation:
+      type: object
+      properties:
+        locale:
+          type: string
+        title:
+          type: string
+        overview:
+          type: string
+    ExternalIds:
+      type: object
+      properties:
+        tmdbId:
+          type: integer
+        imdbId:
+          type: string
+    PersonSummary:
+      type: object
+      properties:
+        tmdbPersonId:
+          type: integer
+        name:
+          type: string
+        profileUrl:
+          type: string
+    PersonDetails:
+      type: object
+      properties:
+        tmdbPersonId:
+          type: integer
+        name:
+          type: string
+        biography:
+          type: string

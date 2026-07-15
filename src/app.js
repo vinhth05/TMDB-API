@@ -6,9 +6,7 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const swaggerUi = require('swagger-ui-express');
 
-const config = require('./config/config');
-const importRoutes = require('./routes/importRoutes');
-const healthRoutes = require('./routes/healthRoutes');
+const apiRoutes = require('./routes/apiRoutes');
 const { errorHandler, notFound } = require('./middlewares/errorHandler');
 const swaggerSpecs = require('./swagger/swaggerOptions');
 
@@ -48,10 +46,7 @@ app.use(limiter);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 // Routes
-app.use('/health', healthRoutes);
-
-const verifyApiKey = require('./middlewares/authMiddleware');
-app.use('/api/import', verifyApiKey, importRoutes);
+app.use('/', apiRoutes);
 
 // Error Handling
 app.use(notFound);
