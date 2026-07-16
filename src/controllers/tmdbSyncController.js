@@ -50,7 +50,10 @@ const latestMovies = async (req, res, next) => {
 const updatedMovies = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page || '1', 10);
-    const updatedIds = await movieSyncService.getUpdatedMovieIds(page);
+    const startDate = req.query.startDate || null; // format: YYYY-MM-DD
+    const endDate = req.query.endDate || null; // format: YYYY-MM-DD
+    
+    const updatedIds = await movieSyncService.getUpdatedMovieIds(page, startDate, endDate);
     
     // Limit to 20 for performance in a single API call
     const limitedIds = updatedIds.slice(0, 20);

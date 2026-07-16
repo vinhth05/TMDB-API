@@ -66,11 +66,16 @@ class MovieSyncService {
   }
 
   /**
-   * Fetches recently updated movie IDs (last 24 hours).
+   * Fetches recently updated movie IDs.
+   * Can pass startDate and endDate (YYYY-MM-DD) to fetch changes within a specific timeframe (max 14 days apart per TMDB docs).
    */
-  async getUpdatedMovieIds(page = 1) {
+  async getUpdatedMovieIds(page = 1, startDate = null, endDate = null) {
     try {
-      const response = await tmdbClient.get('/movie/changes', { params: { page } });
+      const params = { page };
+      if (startDate) params.start_date = startDate;
+      if (endDate) params.end_date = endDate;
+      
+      const response = await tmdbClient.get('/movie/changes', { params });
       if (!response.data || !response.data.results) return [];
       return response.data.results.map(r => r.id);
     } catch (error) {
