@@ -13,7 +13,7 @@ module.exports = {
     imageSize: process.env.TMDB_IMAGE_SIZE || 'original',
     defaultLanguage: process.env.TMDB_DEFAULT_LANGUAGE || 'vi-VN',
     fallbackLanguage: process.env.TMDB_FALLBACK_LANGUAGE || 'en-US',
-    timeout: 5000,
+    timeout: 10000,
     token: process.env.TMDB_TOKEN,
     exportBaseUrl: 'http://files.tmdb.org/p/exports',
   },

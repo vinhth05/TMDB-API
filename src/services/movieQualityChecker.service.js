@@ -8,14 +8,12 @@ class MovieQualityCheckerService {
       return { decision: 'REJECT', score: 0 };
     }
 
-    let score = 0;
-
     // Quality Score Rules
-    if (this.hasPoster(movie)) score += 15;
+    // Base score is 35 because isValid already guarantees: poster (15), runtime (10), releaseDate (10)
+    let score = 35;
+
     if (this.hasBackdrop(movie)) score += 5;
     if (this.hasGoodOverview(movie)) score += 15;
-    if (this.hasRuntime(movie)) score += 10;
-    if (this.hasReleaseDate(movie)) score += 10;
     if (this.hasGenres(movie)) score += 5;
     if (this.hasCast(movie)) score += 10;
     if (this.hasDirector(movie)) score += 5;
@@ -30,9 +28,9 @@ class MovieQualityCheckerService {
 
     // Decision Logic
     let decision = 'REJECT';
-    if (score >= 70) {
+    if (score >= 40) {
       decision = 'ACCEPT';
-    } else if (score >= 50) {
+    } else if (score >= 25) {
       decision = 'HOLD';
     }
 
@@ -48,21 +46,9 @@ class MovieQualityCheckerService {
     // Missing title
     if (!movie.title && !movie.original_title) return false;
 
-    // Missing poster
-    if (!movie.poster_path) return false;
+    // Missing poster and backdrop
+    if (!movie.poster_path && !movie.backdrop_path) return false;
     
-    // Missing release date
-    if (!movie.release_date) return false;
-    
-    // Runtime <= 0
-    if (movie.runtime === undefined || movie.runtime === null || movie.runtime <= 0) return false;
-    
-    // Vote count == 0
-    if (movie.vote_count === undefined || movie.vote_count === null || movie.vote_count === 0) return false;
-    
-    // Overview shorter than 30 characters
-    if (!movie.overview || movie.overview.trim().length < 30) return false;
-
     // Invalid TMDB data
     if (!movie.id) return false;
 
@@ -77,11 +63,8 @@ class MovieQualityCheckerService {
     return true;
   }
 
-  hasPoster(movie) { return !!movie.poster_path; }
   hasBackdrop(movie) { return !!movie.backdrop_path; }
   hasGoodOverview(movie) { return !!(movie.overview && movie.overview.trim().length > 100); }
-  hasRuntime(movie) { return !!(movie.runtime && movie.runtime > 0); }
-  hasReleaseDate(movie) { return !!movie.release_date; }
   hasGenres(movie) { return !!(movie.genres && movie.genres.length > 0); }
   hasCast(movie) { return !!(movie.credits && movie.credits.cast && movie.credits.cast.length > 0); }
   hasDirector(movie) { return !!(movie.credits && movie.credits.crew && movie.credits.crew.some(c => c.job === 'Director')); }

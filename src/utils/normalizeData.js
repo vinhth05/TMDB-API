@@ -382,35 +382,14 @@ const normalizePersonDetail = (person) => {
 const normalizeSyncMovie = (movie, qualityScore, qualityStatus) => {
   if (!movie) return null;
 
-  const normalizedCredits = normalizeCredits(movie.credits);
-  const normalizedVideos = normalizeVideos(movie.videos, config.tmdb.defaultLanguage);
+  const bundle = normalizeMovieBundle(movie, config.tmdb.defaultLanguage);
   
-  const movieData = {
-    tmdbId: movie.id,
-    title: movie.title,
-    originalTitle: movie.original_title || null,
-    overview: movie.overview || null,
-    posterPath: movie.poster_path || null,
-    backdropPath: movie.backdrop_path || null,
-    releaseDate: movie.release_date || null,
-    runtime: movie.runtime || null,
-    genres: (movie.genres || []).map(g => ({ tmdbGenreId: g.id, name: g.name })),
-    cast: normalizedCredits.mainCast || [],
-    director: normalizedCredits.directors.length > 0 ? normalizedCredits.directors[0] : null,
-    productionCompanies: (movie.production_companies || []).map(c => ({ tmdbCompanyId: c.id, name: c.name })),
-    trailer: normalizedVideos.primaryTrailer || null,
-    imdbId: movie.imdb_id || (movie.external_ids && movie.external_ids.imdb_id) || null,
-    voteAverage: movie.vote_average || 0,
-    voteCount: movie.vote_count || 0,
-    popularity: movie.popularity || 0,
-  };
-
   return {
     tmdbId: movie.id,
-    lastUpdated: new Date().toISOString(), // Fallback if no specific last changed date is fetched, TMDB export means it changed recently
+    lastUpdated: new Date().toISOString(), // Fallback if no specific last changed date is fetched
     qualityScore,
     qualityStatus,
-    movie: movieData
+    ...bundle
   };
 };
 

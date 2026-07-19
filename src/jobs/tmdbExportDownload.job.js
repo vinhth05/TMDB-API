@@ -20,7 +20,7 @@ const startJob = () => {
     }
   });
   
-  console.log('TMDB Export Download cron job scheduled for 08:30 server time daily.');
+  // console.log('TMDB Export Download cron job scheduled for 08:30 server time daily.');
 };
 
 module.exports = {

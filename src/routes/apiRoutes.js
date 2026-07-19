@@ -102,13 +102,8 @@ router.get('/api/import/top-rated', validate(schemas.listSchema), movieControlle
 // -----------------------
 // People Endpoints
 // -----------------------
-router.get('/api/import/people/search', validate(schemas.searchSchema), movieController.personSearch);
-router.get('/api/import/people/:tmdbPersonId', validate(schemas.idSchema, 'params'), movieController.person); // using id schema but parameter is different? let's use idSchema for all people routes if id is not specifically tmdbPersonId
-// Wait, idSchema validates req.params.id. I should define a schema for tmdbPersonId or just use id and rename parameter.
-// Let's use id for the param name to keep schemas simple, but we can override params manually or define tmdbPersonIdSchema.
-// Since we used tmdbPersonId in controller, we need a tmdbPersonIdSchema or we change param back to id. Let's fix this in the router mapping.
-
 // We will use :id for person endpoints to match idSchema, then controller uses req.params.id or req.params.tmdbPersonId
+router.get('/api/import/people/search', validate(schemas.searchSchema), movieController.personSearch);
 router.get('/api/import/people/:tmdbPersonId', validate(schemas.tmdbPersonIdSchema, 'params'), movieController.person);
 router.get('/api/import/people/:tmdbPersonId/movie-credits', validate(schemas.tmdbPersonIdSchema, 'params'), movieController.personMovieCredits);
 router.get('/api/import/people/:tmdbPersonId/images', validate(schemas.tmdbPersonIdSchema, 'params'), movieController.personImages);

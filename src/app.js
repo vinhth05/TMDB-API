@@ -11,7 +11,7 @@ const { errorHandler, notFound } = require('./middlewares/errorHandler');
 const swaggerSpecs = require('./swagger/swaggerOptions');
 
 const app = express();
-
+app.set('trust proxy', 1);
 // Security Middlewares
 app.use(helmet());
 app.disable('x-powered-by');

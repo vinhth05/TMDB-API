@@ -1,143 +1,232 @@
-# API Documentation & Hướng Dẫn Sử Dụng
+# Hướng Dẫn Sử Dụng TMDB-API & Cấu Trúc Dữ Liệu Trả Về (JSON)
 
-The full OpenAPI/Swagger documentation is hosted live at:
-`/api-docs`
-
-It covers all request schemas, required query parameters, authentication instructions, and expected response payloads (including Error formats and Pagination schemas).
-
-## Frontend Integration
-
-For a comprehensive guide on how the frontend team should utilize these endpoints to power the LoraFilm Admin movie-import workflow (specifically the `bundle` endpoint), please refer to:
-[docs/FRONTEND_INTEGRATION.md](./docs/FRONTEND_INTEGRATION.md)
+Tài liệu này cung cấp chi tiết về các API quan trọng nhất của hệ thống **TMDB-API**, bao gồm các tham số đầu vào và **cấu trúc JSON trả về mẫu** để đội ngũ Frontend và các dịch vụ khác (như Java Movie Service) dễ dàng tích hợp.
 
 ---
 
-# Hướng Dẫn Sử Dụng TMDB-API
+## Cấu Trúc Phản Hồi Chung (Standard Response Format)
 
-Đây là tài liệu hướng dẫn sử dụng và cài đặt cho dự án **TMDB-API** (TMDB Integration API). Dịch vụ này đóng vai trò là một API trung gian kết nối hệ thống LoraFilm với API của TMDB, giúp đồng bộ và chuẩn hóa dữ liệu phim theo yêu cầu cụ thể của LoraFilm.
+Tất cả các API (ngoại trừ `/health`) đều tuân theo chuẩn cấu trúc JSON sau:
 
-## 1. Yêu Cầu Hệ Thống
-Trước khi bắt đầu, đảm bảo máy tính/máy chủ của bạn đã cài đặt các phần mềm sau:
-- **Node.js** (Khuyến nghị phiên bản LTS mới nhất - ví dụ v18 hoặc v20)
-- **NPM** (Đi kèm với Node.js)
-- **PM2** (Sử dụng để quản lý tiến trình chạy trên môi trường Production) - Cài đặt qua lệnh: `npm install -g pm2`
-
-## 2. Cài Đặt Dự Án
-**Bước 1:** Clone (Tải) mã nguồn về máy hoặc di chuyển vào thư mục dự án `TMDB-API`.
-
-**Bước 2:** Cài đặt các thư viện phụ thuộc bằng lệnh:
-```bash
-npm install
-```
-
-**Bước 3:** Cấu hình biến môi trường
-- Sao chép file `.env.example` và đổi tên thành `.env`
-- Mở file `.env` lên và điền các thông số cấu hình. 
-*(Lưu ý: Không bao giờ commit file `.env` lên Git).*
-
-## 3. Khởi Chạy Ứng Dụng
-
-**Môi trường phát triển (Development):**
-```bash
-npm run dev
-```
-
-**Môi trường sản xuất (Production) với PM2:**
-```bash
-pm2 start ecosystem.config.js --env production
-```
-
-## 4. Xác Thực (Authentication)
-Tất cả các endpoint API (ngoại trừ `/health` và trang tài liệu Swagger) đều yêu cầu phải gửi kèm API Key trong Header của request:
-```http
-x-api-key: your-internal-api-key
-```
-
-> [!WARNING]
-> **CẢNH BÁO BẢO MẬT:** Tuyệt đối không được để lộ `x-api-key` trên mã nguồn Frontend (React/Vite). Frontend chỉ nên gọi đến API Gateway hoặc backend chính của LoraFilm.
-
-## 5. Cơ Chế Hoạt Động Bổ Sung
-- **Cache Dữ Liệu:** Dịch vụ sử dụng bộ nhớ cache tạm thời trên RAM (`node-cache`) để tăng tốc độ phản hồi.
-- **Tự Động Xử Lý Ngôn Ngữ:** Dịch vụ ưu tiên trả về dữ liệu phim bằng tiếng Việt (`vi-VN`). Nếu thiếu, hệ thống tự động điền phần thiếu bằng thông tin tiếng Anh (`en-US`).
-
-## 6. Cấu Trúc Phản Hồi Chung (Standard Response)
-Hầu hết các API trả về cấu trúc chuẩn như sau:
 ```json
 {
   "success": true,
-  "data": { /* Dữ liệu trả về tùy API */ },
-  "meta": { "timestamp": "2026-07-15T00:00:00.000Z" }
+  "data": { 
+    // Dữ liệu chính của API nằm ở đây (có thể là Object hoặc Array)
+  },
+  "pagination": { // (Tùy chọn) Chỉ xuất hiện ở các API có phân trang
+    "page": 1,
+    "pageSize": 20,
+    "totalPages": 50,
+    "totalResults": 1000,
+    "hasNext": true,
+    "hasPrevious": false
+  },
+  "meta": { 
+    "timestamp": "2026-07-19T03:00:00.000Z" 
+  }
 }
 ```
 
-Dưới đây là các mã lỗi (Error Codes) chuẩn mà API có thể trả về:
-- `VALIDATION_ERROR`
-- `INVALID_API_KEY`
-- `TMDB_MOVIE_NOT_FOUND`
-- `TMDB_RESOURCE_NOT_FOUND`
-- `TMDB_UNAUTHORIZED`
-- `TMDB_FORBIDDEN`
-- `TMDB_RATE_LIMITED`
-- `TMDB_UNAVAILABLE`
-- `TMDB_TIMEOUT`
-- `TMDB_BAD_RESPONSE`
-- `INTERNAL_SERVER_ERROR`
+---
+
+## 1. Nhóm API Đồng Bộ (TMDB Sync)
+
+Nhóm này dùng để tự động cào (crawl) và đồng bộ phim từ TMDB về hệ thống.
+
+### 1.1 Lấy danh sách phim mới nhất (Latest Verified)
+- **`GET /api/tmdb/movies/latest`**
+- **Chức năng:** Trả về danh sách phim chất lượng cao mới nhất vừa được thêm vào hệ thống cache ngầm. Tốc độ cực nhanh.
+- **JSON Trả về mẫu:**
+```json
+{
+  "success": true,
+  "movies": [
+    {
+      "tmdbId": 123456,
+      "title": "Tên Phim Việt Hóa",
+      "originalTitle": "Original Movie Title",
+      "posterPath": "/path_to_poster.jpg",
+      "backdropPath": "/path_to_backdrop.jpg",
+      "overview": "Mô tả nội dung bộ phim...",
+      "releaseDate": "2024-05-10",
+      "popularity": 1500.5,
+      "voteAverage": 8.5,
+      "qualityScore": 85,
+      "source": "VERIFIED"
+    }
+  ]
+}
+```
+
+### 1.2 Xuất dữ liệu phim đồng loạt (Export/Sync)
+- **`GET /api/tmdb/export?cursor=0&limit=10`**
+- **Chức năng:** Quét file dump ID của TMDB và trả về thông tin full bundle của phim, có lọc chất lượng.
+- **JSON Trả về mẫu:**
+```json
+{
+  "cursor": 0,
+  "nextCursor": 10,
+  "limit": 10,
+  "hasMore": true,
+  "movies": [
+    {
+      "tmdbId": 98765,
+      "lastUpdated": "2026-07-19T10:00:00.000Z",
+      "qualityScore": 90,
+      "qualityStatus": "ACCEPT",
+      "movie": { /* Thông tin cơ bản của phim */ },
+      "genres": [ { "tmdbGenreId": 28, "name": "Hành Động" } ],
+      "credits": { /* Đạo diễn, diễn viên... */ },
+      "media": { /* Poster, backdrop... */ },
+      "videos": { /* Trailer, Teaser... */ },
+      "metadata": { "provider": "TMDB", "language": "vi-VN" }
+    }
+  ]
+}
+```
 
 ---
 
-## 7. Danh Sách Các API Endpoints (Chi Tiết & Kết Quả Trả Về)
+## 2. Nhóm API Import Chi Tiết (Protected / Yêu cầu API Key)
 
-Dưới đây là danh sách tổng hợp toàn bộ các API Endpoints hiện có. *Lưu ý: Dữ liệu thực tế thường nằm trong trường `data` của cấu trúc phản hồi chuẩn nêu ở trên.*
+Yêu cầu header: `x-api-key: <your-api-key>`. Nhóm này lấy data vô cùng chi tiết.
 
-### Health
-- **`GET /health`**
-  - **Chức năng:** Kiểm tra trạng thái hoạt động của API.
-  - **Yêu cầu API Key:** Không.
-  - **Trả về:** Cấu trúc trực tiếp `{ status: "UP", tmdb: "CONNECTED", cache: "OK" }`
-
-### Search
-- **`GET /api/import/search`**
-  - **Chức năng:** Tìm kiếm phim theo từ khóa.
-  - **Tham số Query:** `keyword` (bắt buộc), `page` (mặc định: 1), `language`, `region`, `includeAdult` (mặc định: false).
-  - **Trả về (`data`):** Mảng danh sách các phim (`MovieListItem`) kèm đối tượng phân trang (`Pagination`).
-- **`GET /api/import/search/suggestions`**
-  - **Chức năng:** Gợi ý tìm kiếm phim (thích hợp cho tính năng Autocomplete).
-  - **Tham số Query:** `keyword` (bắt buộc), `page` (mặc định: 1).
-  - **Trả về (`data`):** Mảng danh sách các phim rút gọn (`MovieListItem`).
-
-### Movie Import
+### 2.1 Lấy toàn bộ thông tin (Bundle) của 1 bộ phim
 - **`GET /api/import/movies/{tmdbId}/bundle`**
-  - **Chức năng:** Tải về toàn bộ dữ liệu gói (bundle) của một bộ phim phục vụ cho quá trình Import vào hệ thống nội bộ.
-  - **Tham số Path:** `tmdbId` (bắt buộc).
-  - **Tham số Query:** `language`.
-  - **Trả về (`data`):** Đối tượng `MovieImportBundle` bao gồm mọi thứ (chi tiết phim `movie`, thể loại `genres`, đoàn phim `credits`, hình ảnh `media`, video trailers `videos`, thông tin phát hành `releaseInfo`, bản dịch `translations`, externalIds...).
+- **Chức năng:** Kéo TOÀN BỘ dữ liệu của một phim trong một lần gọi API.
+- **JSON Trả về mẫu (`data`):**
+```json
+{
+  "movie": {
+    "tmdbId": 533535,
+    "imdbId": "tt10872600",
+    "title": "Deadpool & Wolverine",
+    "originalTitle": "Deadpool & Wolverine",
+    "tagline": "Everyone deserves a happy ending.",
+    "overview": "Deadpool được TVA mời vào MCU...",
+    "originalLanguage": "en",
+    "runtimeMinutes": 128,
+    "releaseDate": "2024-07-24",
+    "adult": false,
+    "budget": 200000000,
+    "revenue": 1000000000,
+    "popularity": 8500.5,
+    "voteAverage": 7.9,
+    "voteCount": 3500,
+    "poster": { "url": "https://image.tmdb.org/t/p/w500/poster.jpg" },
+    "backdrop": { "url": "https://image.tmdb.org/t/p/w500/bg.jpg" }
+  },
+  "genres": [
+    { "tmdbGenreId": 28, "name": "Hành Động" },
+    { "tmdbGenreId": 35, "name": "Hài" }
+  ],
+  "credits": {
+    "directors": [
+      { "tmdbPersonId": 17825, "name": "Shawn Levy", "profileUrl": "..." }
+    ],
+    "mainCast": [
+      { "tmdbPersonId": 10859, "name": "Ryan Reynolds", "character": "Wade Wilson / Deadpool", "order": 0, "profileUrl": "..." },
+      { "tmdbPersonId": 6968, "name": "Hugh Jackman", "character": "Logan / Wolverine", "order": 1, "profileUrl": "..." }
+    ]
+  },
+  "videos": {
+    "primaryTrailer": {
+      "name": "Official Trailer",
+      "key": "73_1biulkYk",
+      "url": "https://www.youtube.com/watch?v=73_1biulkYk",
+      "embedUrl": "https://www.youtube.com/embed/73_1biulkYk",
+      "official": true
+    }
+  },
+  "releaseInfo": {
+    "preferredCountry": "VN",
+    "preferredRelease": {
+      "country": "VN",
+      "releaseDate": "2024-07-26T00:00:00.000Z",
+      "releaseType": { "code": 3, "name": "Theatrical" },
+      "suggestedLoraFilmAgeRating": "T18"
+    }
+  },
+  "metadata": {
+    "provider": "TMDB",
+    "language": "vi-VN",
+    "fetchedAt": "2026-07-19T03:00:00.000Z"
+  }
+}
+```
 
-### Reference Data
-- **`GET /api/import/genres`**
-  - **Chức năng:** Lấy danh sách thể loại phim để tham chiếu.
-  - **Tham số Query:** `language`.
-  - **Trả về (`data`):** Mảng danh sách các thể loại phim.
+### 2.2 Tìm kiếm phim (Search)
+- **`GET /api/import/search?keyword=avengers&page=1`**
+- **JSON Trả về mẫu (`data`):**
+```json
+[
+  {
+    "tmdbId": 299534,
+    "title": "Avengers: Hồi Kết",
+    "originalTitle": "Avengers: Endgame",
+    "overview": "Sau những tàn phá thảm khốc của Thanos...",
+    "releaseDate": "2019-04-24",
+    "releaseYear": 2019,
+    "posterUrl": "https://image.tmdb.org/t/p/w500/or06FN3Dka5tukK1e9sl16pB3iy.jpg",
+    "genreIds": [12, 878, 28],
+    "popularity": 150.5,
+    "voteAverage": 8.3
+  }
+]
+```
 
-### Movie Resources
-Tất cả đều yêu cầu tham số Path `tmdbId`:
-- **`GET /api/import/movies/{tmdbId}/release-dates`**
-  - **Chức năng:** Lấy thông tin ngày phát hành của phim.
-  - **Trả về (`data`):** Đối tượng `ReleaseInformation` chứa thông tin lịch chiếu các quốc gia.
-- **`GET /api/import/movies/{tmdbId}/translations`**
-  - **Chức năng:** Lấy các bản dịch ngôn ngữ của phim.
-  - **Trả về (`data`):** Mảng danh sách đối tượng `Translation`.
-- **`GET /api/import/movies/{tmdbId}/external-ids`**
-  - **Chức năng:** Lấy các ID liên kết bên ngoài (như IMDB, Facebook, v.v.).
-  - **Trả về (`data`):** Đối tượng `ExternalIds` (gồm `imdbId`, `tmdbId`, v.v.).
+---
 
-### Movie Discovery
-- **`GET /api/import/discover/movies`**
-  - **Chức năng:** Khám phá phim dựa trên các tiêu chí lọc.
-  - **Tham số Query:** `page` (mặc định: 1), `sortBy` (mặc định: `popularity.desc`).
-  - **Trả về (`data`):** Mảng danh sách các phim (`MovieListItem`) kèm thông tin phân trang (`Pagination`).
+## 3. Nhóm API Public (Client/Frontend)
 
-### Movie Lists
+Nhóm này mở cho Frontend gọi trực tiếp không cần Key.
+
+### 3.1 Danh sách top 20 phim mới nhất (Trang chủ)
 - **`GET /api/tmdb/movies/latest-top20`**
-  - **Mô tả:** Trả về danh sách 20 bộ phim mới nhất đã qua kiểm định (Verified). Nếu chưa đủ 20 phim, hệ thống sẽ tự động dùng phim sắp chiếu (Future) để đắp vào cho đủ 20. Phim nào mới duyệt xong sẽ tự động lên đầu bảng xếp hạng.
-  - **Tham số Query:** `limit` (tối đa 10).
-  - **Trả về (`data`):** Mảng chứa 10 bộ phim mới nhất.
+- **Chức năng:** Trả về 20 phim (gồm phim mới phát hành đã verified, bù thêm phim sắp chiếu nếu thiếu).
+- **JSON Trả về mẫu:** Tương tự cấu trúc của `GET /api/tmdb/movies/latest` ở phần 1.1.
+
+### 3.2 Gợi ý tìm kiếm (Autocomplete Suggestions)
+- **`GET /api/search/keyword?keyword=batman`**
+- **Chức năng:** Trả về danh sách phim rút gọn để hiển thị nhanh trên thanh tìm kiếm.
+- **JSON Trả về mẫu (`data`):**
+```json
+[
+  {
+    "tmdbId": 414906,
+    "title": "The Batman",
+    "releaseYear": 2022,
+    "posterThumbnailUrl": "https://image.tmdb.org/t/p/w185/74xTEgt7R36Fpooo50r9T25onhq.jpg"
+  },
+  {
+    "tmdbId": 272,
+    "title": "Batman Begins",
+    "releaseYear": 2005,
+    "posterThumbnailUrl": "https://image.tmdb.org/t/p/w185/4MpN4kIEqUjW8OPtOQJXlTdHiJV.jpg"
+  }
+]
+```
+
+### 3.3 Danh sách Thể loại (Genres)
+- **`GET /api/genres`**
+- **JSON Trả về mẫu (`data`):**
+```json
+{
+  "genres": [
+    {
+      "tmdbGenreId": 28,
+      "name": "Phim Hành Động",
+      "mappingStatus": "UNMAPPED"
+    },
+    {
+      "tmdbGenreId": 35,
+      "name": "Phim Hài",
+      "mappingStatus": "UNMAPPED"
+    }
+  ]
+}
+```
+
+---
+*Ghi chú: Để biết thêm về tham số và các Error Code, hãy truy cập giao diện Swagger UI tại `/api-docs` khi server đang chạy.*

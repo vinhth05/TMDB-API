@@ -91,7 +91,7 @@ const runLatestMovieJob = async () => {
   }
 
   isRunning = true;
-  console.log('[Job] Scheduler execution started.');
+  // console.log('[Job] Scheduler execution started.');
   const startTime = Date.now();
 
   try {
@@ -103,12 +103,12 @@ const runLatestMovieJob = async () => {
     }
 
     const latestMovieId = latestMovie.id;
-    console.log(`[Job] Latest TMDB ID detected: ${latestMovieId}`);
+    // console.log(`[Job] Latest TMDB ID detected: ${latestMovieId}`);
 
     let lastCheckedMovieId = latestCache.getLastCheckedMovieId();
 
     if (!lastCheckedMovieId) {
-      console.log(`[Job] First run. Seeding by scanning the last 10 movies...`);
+      // console.log(`[Job] First run. Seeding by scanning the last 10 movies...`);
       lastCheckedMovieId = latestMovieId - 10;
       latestCache.setLastCheckedMovieId(lastCheckedMovieId);
     }
@@ -130,14 +130,14 @@ const runLatestMovieJob = async () => {
       idsToScan.push(id);
     }
 
-    console.log(`[Job] Number of movies scanned: ${idsToScan.length}`);
+    // console.log(`[Job] Number of movies scanned: ${idsToScan.length}`);
 
     const { accepted, hold, rejected, errors } = await processBatch(idsToScan);
 
     latestCache.setLastCheckedMovieId(endId);
 
     const duration = Date.now() - startTime;
-    console.log(`[Job] Execution time: ${duration}ms. Accepted: ${accepted}. Hold: ${hold}. Rejected: ${rejected}. TMDB errors: ${errors}.`);
+    // console.log(`[Job] Execution time: ${duration}ms. Accepted: ${accepted}. Hold: ${hold}. Rejected: ${rejected}. TMDB errors: ${errors}.`);
     
   } catch (error) {
     console.error('[Job] Scheduler error:', error.message);
@@ -149,7 +149,7 @@ const runLatestMovieJob = async () => {
 const startJob = () => {
   // Every 15 minutes
   cron.schedule('*/15 * * * *', runLatestMovieJob);
-  console.log('[Job] Scheduled tmdbLatestMovie to run every 15 minutes.');
+  // console.log('[Job] Scheduled tmdbLatestMovie to run every 15 minutes.');
 
   runLatestMovieJob();
 };

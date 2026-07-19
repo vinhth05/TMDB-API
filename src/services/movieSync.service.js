@@ -9,12 +9,16 @@ class MovieSyncService {
    * This is crucial to avoid memory leaks during large exports.
    */
   async fetchMovieRaw(tmdbId) {
-    const appendList = 'credits,videos,images,release_dates,external_ids';
+    const appendList = 'credits,videos,images,release_dates,translations,alternative_titles,external_ids';
     const langParam = config.tmdb.defaultLanguage;
     
     try {
       const response = await tmdbClient.get(`/movie/${tmdbId}`, {
-        params: { language: langParam, append_to_response: appendList }
+        params: {
+          language: langParam,
+          append_to_response: appendList,
+          include_image_language: `${langParam.split('-')[0]},en,null`
+        }
       });
       return response.data;
     } catch (error) {

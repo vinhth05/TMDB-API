@@ -68,7 +68,11 @@ const getMoviePreview = async (tmdbId, language = null) => {
 
   const appendList = 'credits,videos,images,keywords,similar,release_dates,translations,external_ids,reviews,watch/providers,alternative_titles,changes';
   const response = await tmdbClient.get(`/movie/${tmdbId}`, {
-    params: { language: langParam, append_to_response: appendList }
+    params: {
+      language: langParam,
+      append_to_response: appendList,
+      include_image_language: `${langParam.split('-')[0]},en,null`
+    }
   });
 
   let movieData = response.data;
@@ -94,7 +98,11 @@ const getMovieBundle = async (tmdbId, language = null) => {
 
   const appendList = 'credits,videos,images,keywords,release_dates,translations,alternative_titles,external_ids';
   const response = await tmdbClient.get(`/movie/${tmdbId}`, {
-    params: { language: langParam, append_to_response: appendList }
+    params: {
+      language: langParam,
+      append_to_response: appendList,
+      include_image_language: `${langParam.split('-')[0]},en,null`
+    }
   });
 
   let movieData = response.data;
