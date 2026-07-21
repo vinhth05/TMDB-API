@@ -25,5 +25,8 @@ module.exports = {
   },
   security: {
     apiKey: process.env.API_KEY || 'lorafilm-secret-key'
+  },
+  qualityCheck: {
+    strict: process.env.STRICT_QUALITY_CHECK !== 'false' // default to true (strict mode) unless set to 'false'
   }
 };

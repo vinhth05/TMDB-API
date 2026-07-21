@@ -3,10 +3,9 @@ const http = require('http');
 const https = require('https');
 const config = require('./config');
 
-// Ép Node.js sử dụng IPv4 (khắc phục lỗi timeout thường gặp trên Node 17+ khi mạng có cấu hình IPv6 không ổn định)
-// Sử dụng keepAlive để tái sử dụng connection TCP, giảm thiểu handshake SSL mỗi lần gọi TMDB
-const httpAgent = new http.Agent({ family: 4, keepAlive: true, maxSockets: 50 });
-const httpsAgent = new https.Agent({ family: 4, keepAlive: true, maxSockets: 50 });
+// Use standard Agents with keepAlive to reuse TCP connections efficiently without socket family restrictions
+const httpAgent = new http.Agent({ keepAlive: true });
+const httpsAgent = new https.Agent({ keepAlive: true });
 
 const tmdbClient = axios.create({
   baseURL: config.tmdb.baseUrl,
@@ -20,21 +19,27 @@ const tmdbClient = axios.create({
   }
 });
 
-// Response interceptor for basic retry logic
+// Response interceptor for smart retry logic on network errors, 5xx, or 429 rate limits
 tmdbClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const { config: reqConfig, response } = error;
     
-    // If the config doesn't exist or we already retried, throw error
-    if (!reqConfig || reqConfig._retry) {
+    if (!reqConfig) {
       return Promise.reject(error);
     }
+
+    reqConfig._retryCount = reqConfig._retryCount || 0;
     
-    // Retry on 5xx errors or network errors
-    if (!response || response.status >= 500) {
-      reqConfig._retry = true;
-      console.log(`Retrying request to ${reqConfig.url}`);
+    // Allow up to 3 retries on network/server/rate-limit errors
+    if (reqConfig._retryCount < 3) {
+      reqConfig._retryCount++;
+      const isRateLimit = response && response.status === 429;
+      const delay = isRateLimit ? 1500 : 500 * reqConfig._retryCount;
+
+      console.warn(`[TMDB Client] Retrying request to ${reqConfig.url} (Attempt ${reqConfig._retryCount}/3) after ${delay}ms due to: ${error.message}`);
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
       return tmdbClient(reqConfig);
     }
     

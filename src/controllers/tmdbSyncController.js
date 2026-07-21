@@ -22,13 +22,17 @@ const exportMovies = async (req, res, next) => {
   try {
     const cursor = parseInt(req.query.cursor || '0', 10);
     const limit = parseInt(req.query.limit || '20', 10);
+    const strictParam = req.query.strict;
+    // Default export API to strict: false so caller gets all valid movies unless explicitly ?strict=true
+    const isStrict = strictParam === 'true';
 
-    console.log(`[TMDB Export API] Export movies request received - cursor: ${cursor}, limit: ${limit}`);
+    console.log(`[TMDB Export API] Export movies request received - cursor: ${cursor}, limit: ${limit}, strict: ${isStrict}`);
 
     const streamResult = await tmdbExportStream.getMovieIds(cursor, limit);
     console.log(`[TMDB Export API] Read ${streamResult.ids.length} raw IDs from export (totalRead: ${streamResult.totalRead}, hasMore: ${streamResult.hasMore})`);
 
-    const processedMovies = await movieSyncService.processMoviesConcurrently(streamResult.ids, 2);
+    const options = { strict: isStrict };
+    const processedMovies = await movieSyncService.processMoviesConcurrently(streamResult.ids, 2, options);
     const elapsed = Date.now() - startTime;
     console.log(`[TMDB Export API] Processed ${processedMovies.length}/${streamResult.ids.length} valid movies in ${elapsed}ms (nextCursor: ${cursor + streamResult.totalRead})`);
 

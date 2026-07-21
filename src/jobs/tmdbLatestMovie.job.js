@@ -46,7 +46,7 @@ const processBatch = async (movieIds) => {
   for (const movieId of movieIds) {
     try {
       const movieDetail = await fetchMovieWithRetry(movieId);
-      const { decision, score } = qualityChecker.evaluate(movieDetail);
+      const { decision, score } = qualityChecker.evaluate(movieDetail, { strict: true });
 
       if (decision === 'ACCEPT') {
         const formattedMovie = {
@@ -120,9 +120,9 @@ const runLatestMovieJob = async () => {
     let startId = lastCheckedMovieId + 1;
     let endId = latestMovieId;
 
-    // Maximum per scheduler execution: 10 movie IDs.
-    if (endId - startId + 1 > 10) {
-      startId = endId - 9;
+    // Maximum per scheduler execution: 20 movie IDs.
+    if (endId - startId + 1 > 20) {
+      startId = endId - 19;
     }
 
     const idsToScan = [];

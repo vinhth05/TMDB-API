@@ -11,7 +11,7 @@ class MovieSyncService {
   async fetchMovieRaw(tmdbId) {
     const appendList = 'credits,videos,images,release_dates,translations,alternative_titles,external_ids';
     const langParam = config.tmdb.defaultLanguage;
-    
+
     try {
       const response = await tmdbClient.get(`/movie/${tmdbId}`, {
         params: {
@@ -33,13 +33,13 @@ class MovieSyncService {
    * Processes a single movie: fetches it, evaluates quality, and normalizes it.
    * Returns normalized movie if ACCEPT, otherwise null.
    */
-  async processMovie(tmdbId) {
+  async processMovie(tmdbId, options = {}) {
     const rawMovie = await this.fetchMovieRaw(tmdbId);
     if (!rawMovie) return null;
 
-    const quality = movieQualityChecker.evaluate(rawMovie);
-    
-    if (quality.decision !== 'ACCEPT') {
+    const quality = movieQualityChecker.evaluate(rawMovie, options);
+
+    if (quality.decision === 'REJECT') {
       return null;
     }
 
@@ -51,21 +51,21 @@ class MovieSyncService {
   /**
    * Processes an array of movie IDs with a strict concurrency limit (default 2).
    */
-  async processMoviesConcurrently(movieIds, maxConcurrency = 2) {
+  async processMoviesConcurrently(movieIds, maxConcurrency = 2, options = {}) {
     const results = [];
-    
+
     // Process in chunks to respect concurrency limit
     for (let i = 0; i < movieIds.length; i += maxConcurrency) {
       const chunk = movieIds.slice(i, i + maxConcurrency);
-      const promises = chunk.map(id => this.processMovie(id).catch(err => {
+      const promises = chunk.map(id => this.processMovie(id, options).catch(err => {
         console.error(`Error processing movie ${id}:`, err.message);
         return null; // Don't crash the whole batch on one error
       }));
-      
+
       const chunkResults = await Promise.all(promises);
       results.push(...chunkResults.filter(m => m !== null));
     }
-    
+
     return results;
   }
 
@@ -78,7 +78,7 @@ class MovieSyncService {
       const params = { page };
       if (startDate) params.start_date = startDate;
       if (endDate) params.end_date = endDate;
-      
+
       const response = await tmdbClient.get('/movie/changes', { params });
       if (!response.data || !response.data.results) return [];
       return response.data.results.map(r => r.id);

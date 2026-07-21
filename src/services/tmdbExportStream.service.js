@@ -122,21 +122,25 @@ class TmdbExportStreamService {
   }
 
   /**
-   * Sorts the raw downloaded export file by TMDB ID DESCENDING (newest/highest IDs first).
+   * Sorts the raw downloaded export file by Popularity DESCENDING (most popular first), then by TMDB ID DESCENDING.
    * Optimized for low-spec VPS (2GB RAM, 2 CPUs, 10GB SSD):
-   * - Uses fast string index parsing (avoiding millions of JSON.parse objects in RAM)
+   * - Uses fast JSON.parse for accuracy (reads id and popularity)
    * - Stream chunks output to gzip with optimal compression level
    * - Deletes raw file after sorting to save ~27MB disk space
    */
   async sortExportFile() {
-    if (!fs.existsSync(LOCAL_EXPORT_FILE)) {
-      throw new Error('Raw export file not found to sort');
+    const sourceFile = fs.existsSync(LOCAL_EXPORT_FILE) 
+      ? LOCAL_EXPORT_FILE 
+      : (fs.existsSync(SORTED_EXPORT_FILE) ? SORTED_EXPORT_FILE : null);
+
+    if (!sourceFile) {
+      throw new Error('Export file not found to sort');
     }
-    console.log('[TMDB Export Stream] Sorting TMDB export file by ID DESCENDING (newest first)...');
+    console.log('[TMDB Export Stream] Sorting TMDB export file by Popularity DESCENDING (most popular first)...');
     const startTime = Date.now();
 
     return new Promise((resolve, reject) => {
-      const fileStream = fs.createReadStream(LOCAL_EXPORT_FILE);
+      const fileStream = fs.createReadStream(sourceFile);
       const gunzip = zlib.createGunzip();
       const rl = readline.createInterface({ input: gunzip, crlfDelay: Infinity });
 
@@ -145,19 +149,26 @@ class TmdbExportStreamService {
 
       rl.on('line', (line) => {
         if (!line) return;
-        const idx = line.indexOf('"id":');
-        if (idx !== -1) {
-          const end = line.indexOf(',', idx);
-          const id = parseInt(line.substring(idx + 5, end), 10);
-          if (!isNaN(id)) {
-            items.push({ id, line });
+        try {
+          const parsed = JSON.parse(line);
+          if (parsed && typeof parsed.id === 'number') {
+            items.push({
+              id: parsed.id,
+              popularity: typeof parsed.popularity === 'number' ? parsed.popularity : 0,
+              line
+            });
           }
-        }
+        } catch (e) {}
       });
 
       rl.on('close', () => {
-        // Sort DESCENDING: highest TMDB ID first (b.id - a.id)
-        items.sort((a, b) => b.id - a.id);
+        // Sort DESCENDING: Highest popularity first, then highest TMDB ID first
+        items.sort((a, b) => {
+          if (b.popularity !== a.popularity) {
+            return b.popularity - a.popularity;
+          }
+          return b.id - a.id;
+        });
 
         const tempSortedFile = SORTED_EXPORT_FILE + '.tmp';
         const outStream = fs.createWriteStream(tempSortedFile);
@@ -172,10 +183,16 @@ class TmdbExportStreamService {
         gzip.end();
 
         outStream.on('finish', () => {
-          if (fs.existsSync(SORTED_EXPORT_FILE)) {
+          if (fs.existsSync(SORTED_EXPORT_FILE) && sourceFile !== SORTED_EXPORT_FILE) {
             try { fs.unlinkSync(SORTED_EXPORT_FILE); } catch (e) {}
           }
-          fs.renameSync(tempSortedFile, SORTED_EXPORT_FILE);
+          if (sourceFile !== SORTED_EXPORT_FILE) {
+            fs.renameSync(tempSortedFile, SORTED_EXPORT_FILE);
+          } else {
+            // Overwrite existing SORTED_EXPORT_FILE safely
+            fs.unlinkSync(SORTED_EXPORT_FILE);
+            fs.renameSync(tempSortedFile, SORTED_EXPORT_FILE);
+          }
           
           // Delete raw export file to save disk space on VPS (10GB SSD limit)
           if (fs.existsSync(LOCAL_EXPORT_FILE)) {
@@ -186,7 +203,7 @@ class TmdbExportStreamService {
           }
 
           const elapsed = Date.now() - startTime;
-          console.log(`[TMDB Export Stream] Successfully sorted ${items.length} items by ID DESCENDING in ${elapsed}ms`);
+          console.log(`[TMDB Export Stream] Successfully sorted ${items.length} items by Popularity DESCENDING in ${elapsed}ms`);
           
           // Help V8 GC reclaim RAM immediately
           items.length = 0;
@@ -216,7 +233,7 @@ class TmdbExportStreamService {
         await this.downloadExportFile();
       }
     }
-    console.log(`[TMDB Export Stream] Reading sorted export file (DESCENDING) from cursor: ${cursor}, limit: ${limit}`);
+    console.log(`[TMDB Export Stream] Reading sorted export file (POPULARITY DESCENDING) from cursor: ${cursor}, limit: ${limit}`);
     return await this._streamExportLocal(cursor, limit);
   }
 
@@ -244,6 +261,7 @@ class TmdbExportStreamService {
       let currentLine = 0;
       const results = [];
       let hasMore = true;
+      let isResolved = false;
 
       rl.on('line', (line) => {
         if (currentLine >= cursor && currentLine < cursor + limit) {
@@ -256,20 +274,22 @@ class TmdbExportStreamService {
         }
         currentLine++;
 
-        if (currentLine >= cursor + limit) {
+        if (!isResolved && currentLine >= cursor + limit) {
           // We got all we need, abort to save CPU
+          isResolved = true;
           hasMore = true;
           rl.close();
           fileStream.destroy(); // Stop reading the file early
-          resolve({ ids: results, hasMore, totalRead: currentLine });
+          resolve({ ids: results, hasMore, totalRead: currentLine - cursor });
         }
       });
 
       rl.on('close', () => {
         // If we reach here without aborting, we hit the end of the file
-        if (!fileStream.destroyed) {
+        if (!isResolved) {
+          isResolved = true;
           hasMore = false;
-          resolve({ ids: results, hasMore, totalRead: currentLine });
+          resolve({ ids: results, hasMore, totalRead: currentLine - cursor });
         }
       });
 

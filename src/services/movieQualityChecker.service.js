@@ -1,14 +1,35 @@
+const config = require('../config/config');
+
 class MovieQualityCheckerService {
   constructor() {
-    this.SPAM_KEYWORDS = ['test', 'sample', 'unknown', 'untitled', 'xxx'];
+    this.SPAM_KEYWORDS = [
+      'test', 'sample', 'unknown', 'untitled', 'xxx', 'sex', 'erotic', 'erotica', 
+      'softcore', 'pink film', 'adult content', '極楽', '情事', '花びら', 'ぬくもり',
+      '형수', '처제', '도우미', '야한', '무삭제', '섹스', '마님'
+    ];
   }
 
-  evaluate(movie) {
-    if (!this.isValid(movie)) {
+  evaluate(movie, options = {}) {
+    const isStrict = options.strict !== undefined 
+      ? options.strict 
+      : (config.qualityCheck && config.qualityCheck.strict !== undefined ? config.qualityCheck.strict : true);
+
+    if (!this.isValid(movie, isStrict)) {
       return { decision: 'REJECT', score: 0 };
     }
 
-    // Quality Score Rules
+    if (!isStrict) {
+      // In export mode, require poster_path and either backdrop_path or vote_count >= 5 to filter out obscure B-movies/erotica
+      if (!movie.poster_path) {
+        return { decision: 'REJECT', score: 0 };
+      }
+      if (!movie.backdrop_path && (movie.vote_count || 0) < 5) {
+        return { decision: 'REJECT', score: 0 };
+      }
+      return { decision: 'ACCEPT', score: 100 };
+    }
+
+    // Quality Score Rules (Strict Mode)
     // Base score is 35 because isValid already guarantees: poster (15), runtime (10), releaseDate (10)
     let score = 35;
 
@@ -28,26 +49,23 @@ class MovieQualityCheckerService {
 
     // Decision Logic
     let decision = 'REJECT';
-    if (score >= 40) {
+    if (score >= 70) {
       decision = 'ACCEPT';
-    } else if (score >= 25) {
+    } else if (score >= 40) {
       decision = 'HOLD';
     }
 
     return { decision, score };
   }
 
-  isValid(movie) {
+  isValid(movie, isStrict = false) {
     if (!movie) return false;
 
-    // Reject rules
+    // Reject adult content
     if (movie.adult === true) return false;
     
     // Missing title
     if (!movie.title && !movie.original_title) return false;
-
-    // Missing poster and backdrop
-    if (!movie.poster_path && !movie.backdrop_path) return false;
     
     // Invalid TMDB data
     if (!movie.id) return false;
@@ -58,6 +76,11 @@ class MovieQualityCheckerService {
       if (titleToCheck.includes(keyword)) {
         return false;
       }
+    }
+
+    if (isStrict) {
+      // Missing poster and backdrop required only in strict mode
+      if (!movie.poster_path && !movie.backdrop_path) return false;
     }
 
     return true;

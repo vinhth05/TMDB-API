@@ -13,9 +13,7 @@ const server = app.listen(PORT, () => {
   tmdbExportDownloadJob.startJob();
 });
 
-// Handle unhandled promise rejections
+// Handle unhandled promise rejections safely without exiting the server
 process.on('unhandledRejection', (err) => {
-  console.error(`Error: ${err.message}`);
-  // Close server & exit process
-  server.close(() => process.exit(1));
+  console.error(`[UnhandledRejection] Error: ${err ? err.message || err : 'Unknown error'}`);
 });
