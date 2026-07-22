@@ -23,8 +23,8 @@ const exportMovies = async (req, res, next) => {
     const cursor = parseInt(req.query.cursor || '0', 10);
     const limit = parseInt(req.query.limit || '20', 10);
     const strictParam = req.query.strict;
-    // Default export API to strict: false so caller gets all valid movies unless explicitly ?strict=true
-    const isStrict = strictParam === 'true';
+    // Default export API to strict: true (unless explicitly ?strict=false) to return high-quality non-garbage movies
+    const isStrict = strictParam !== 'false';
 
     console.log(`[TMDB Export API] Export movies request received - cursor: ${cursor}, limit: ${limit}, strict: ${isStrict}`);
 
@@ -104,8 +104,9 @@ const updatedMovies = async (req, res, next) => {
 const movieDetail = async (req, res, next) => {
   try {
     const { tmdbId } = req.params;
+    const includeRejected = req.query.includeRejected === 'true';
     console.log(`[TMDB Sync API] Received request for movie detail tmdbId: ${tmdbId}`);
-    const processedMovie = await movieSyncService.processMovie(tmdbId);
+    const processedMovie = await movieSyncService.processMovie(tmdbId, { includeRejected });
     
     if (!processedMovie) {
       console.warn(`[TMDB Sync API] Movie tmdbId: ${tmdbId} not found or rejected by quality checker`);

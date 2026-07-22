@@ -379,16 +379,36 @@ const normalizePersonDetail = (person) => {
 // =====================
 // SYNC NORMALIZATION
 // =====================
-const normalizeSyncMovie = (movie, qualityScore, qualityStatus) => {
+const normalizeSyncMovie = (movie, evalResult = {}, legacyStatus = null) => {
   if (!movie) return null;
+
+  let approved = false;
+  let approvalStatus = 'REJECTED';
+  let qualityScore = 0;
+  let reasons = [];
+
+  if (evalResult && typeof evalResult === 'object' && evalResult.approvalStatus !== undefined) {
+    approved = evalResult.approved || false;
+    approvalStatus = evalResult.approvalStatus || 'REJECTED';
+    qualityScore = evalResult.qualityScore || 0;
+    reasons = evalResult.reasons || [];
+  } else if (typeof evalResult === 'number') {
+    qualityScore = evalResult;
+    const statusStr = legacyStatus || 'ACCEPT';
+    approvalStatus = statusStr === 'ACCEPT' ? 'AUTO_APPROVED' : (statusStr === 'HOLD' ? 'NEEDS_REVIEW' : 'REJECTED');
+    approved = approvalStatus === 'AUTO_APPROVED';
+  }
 
   const bundle = normalizeMovieBundle(movie, config.tmdb.defaultLanguage);
   
   return {
     tmdbId: movie.id,
-    lastUpdated: new Date().toISOString(), // Fallback if no specific last changed date is fetched
+    approved,
+    approvalStatus,
     qualityScore,
-    qualityStatus,
+    reasons,
+    qualityStatus: approvalStatus, // Backwards compatibility
+    lastUpdated: new Date().toISOString(),
     ...bundle
   };
 };

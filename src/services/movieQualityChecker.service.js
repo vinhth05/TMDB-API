@@ -1,37 +1,113 @@
 const config = require('../config/config');
 
 class MovieQualityCheckerService {
-  constructor() {
-    this.SPAM_KEYWORDS = [
-      'test', 'sample', 'unknown', 'untitled', 'xxx', 'sex', 'erotic', 'erotica', 
-      'softcore', 'pink film', 'adult content', '極楽', '情事', '花びら', 'ぬくもり',
-      '형수', '처제', '도우미', '야한', '무삭제', '섹스', '마님'
-    ];
-  }
-
+  /**
+   * Evaluates a raw or bundle TMDB movie object against Hard Filter rules and Quality Scoring.
+   * Returns a complete approval payload.
+   * 
+   * @param {Object} movie TMDB raw or bundle movie object
+   * @param {Object} options Options override (e.g. { strict: true })
+   * @returns {Object} Evaluation result { approved, approvalStatus, qualityScore, reasons, decision, score }
+   */
   evaluate(movie, options = {}) {
-    const isStrict = options.strict !== undefined 
-      ? options.strict 
-      : (config.qualityCheck && config.qualityCheck.strict !== undefined ? config.qualityCheck.strict : true);
+    const hardConfig = config.qualityCheck.hardFilter;
+    const thresholdConfig = config.qualityCheck.thresholds;
+    const weightConfig = config.qualityCheck.weights;
 
-    if (!this.isValid(movie, isStrict)) {
-      return { decision: 'REJECT', score: 0 };
+    const reasons = [];
+
+    if (!movie) {
+      reasons.push('Movie object is null or undefined');
+      return this._buildResult(false, 'REJECTED', 0, reasons);
     }
 
-    if (!isStrict) {
-      // In export mode, require poster_path and either backdrop_path or vote_count >= 5 to filter out obscure B-movies/erotica
-      if (!movie.poster_path) {
-        return { decision: 'REJECT', score: 0 };
-      }
-      if (!movie.backdrop_path && (movie.vote_count || 0) < 5) {
-        return { decision: 'REJECT', score: 0 };
-      }
-      return { decision: 'ACCEPT', score: 100 };
+    // ==========================================
+    // 1. HARD FILTER (Gatekeeper)
+    // ==========================================
+    if (!movie.id) {
+      reasons.push('Missing TMDB ID');
     }
 
-    // Quality Score Rules (Strict Mode)
-    // Base score is 35 because isValid already guarantees: poster (15), runtime (10), releaseDate (10)
-    let score = 35;
+    if (!movie.title && !movie.original_title) {
+      reasons.push('Missing movie title');
+    }
+
+    if (movie.adult === true) {
+      reasons.push('Adult content (adult: true)');
+    }
+
+    // Spam keyword check
+    const titleToCheck = (movie.title || movie.original_title || '').toLowerCase();
+    const spamKeywords = hardConfig.spamKeywords || [];
+    for (const keyword of spamKeywords) {
+      if (keyword && titleToCheck.includes(keyword.toLowerCase())) {
+        reasons.push(`Title contains blacklisted keyword '${keyword}'`);
+        break;
+      }
+    }
+
+    // Status check
+    if (movie.status && hardConfig.allowedStatuses && hardConfig.allowedStatuses.length > 0) {
+      if (!hardConfig.allowedStatuses.includes(movie.status)) {
+        reasons.push(`Invalid status '${movie.status}' (Allowed: ${hardConfig.allowedStatuses.join(', ')})`);
+      }
+    }
+
+    // Release date check
+    if (hardConfig.requireReleaseDate && !movie.release_date) {
+      reasons.push('Missing release date');
+    }
+
+    // Runtime check (if runtime is provided in details)
+    if (movie.runtime !== undefined && movie.runtime !== null) {
+      if (movie.runtime < hardConfig.minRuntime) {
+        reasons.push(`Runtime too short (${movie.runtime} mins < ${hardConfig.minRuntime} mins minimum)`);
+      }
+    }
+
+    // Image checks
+    if (hardConfig.requirePoster && !movie.poster_path) {
+      reasons.push('Missing poster image');
+    }
+
+    if (hardConfig.requireBackdrop && !movie.backdrop_path) {
+      reasons.push('Missing backdrop image');
+    }
+
+    // Overview check
+    const overviewText = movie.overview ? movie.overview.trim() : '';
+    if (overviewText.length < hardConfig.minOverviewLength) {
+      reasons.push(`Overview missing or too short (${overviewText.length} chars < ${hardConfig.minOverviewLength} chars minimum)`);
+    }
+
+    // Genres check
+    const genresList = movie.genres || (movie.genre_ids ? movie.genre_ids : []);
+    if (hardConfig.requireGenres && (!genresList || genresList.length === 0)) {
+      reasons.push('No genres specified');
+    }
+
+    // Production companies check (if detail object)
+    if (hardConfig.requireProductionCompany && movie.production_companies !== undefined) {
+      if (!movie.production_companies || movie.production_companies.length === 0) {
+        reasons.push('No production company specified');
+      }
+    }
+
+    // Original language check
+    if (hardConfig.requireOriginalLanguage && !movie.original_language) {
+      reasons.push('Missing original language');
+    }
+
+    // If any Hard Filter rule failed -> REJECTED immediately
+    if (reasons.length > 0) {
+      this._logEvaluation(movie.id, movie.title || movie.original_title, 'REJECTED', 0, reasons);
+      return this._buildResult(false, 'REJECTED', 0, reasons);
+    }
+
+    // ==========================================
+    // 2. QUALITY SCORING (0 - 100)
+    // ==========================================
+    let score = weightConfig.baseScore || 35;
 
     if (this.hasBackdrop(movie)) score += 5;
     if (this.hasGoodOverview(movie)) score += 15;
@@ -43,59 +119,105 @@ class MovieQualityCheckerService {
     if (this.hasTrailer(movie)) score += 5;
     if (this.hasPopularity(movie)) score += 5;
     if (this.hasVoteCount(movie)) score += 5;
+    if (this.hasVietnameseLocalization(movie)) score += weightConfig.localization || 10;
 
-    // Maximum score 100
+    // Cap score at 100
     score = Math.min(score, 100);
 
-    // Decision Logic
+    // ==========================================
+    // 3. APPROVAL DECISION
+    // ==========================================
+    let approvalStatus = 'REJECTED';
+    let approved = false;
+
+    if (score >= thresholdConfig.autoApproved) {
+      approvalStatus = 'AUTO_APPROVED';
+      approved = true;
+    } else if (score >= thresholdConfig.needsReview) {
+      approvalStatus = 'NEEDS_REVIEW';
+      approved = false; // Needs manual review before being synced/approved
+      reasons.push(`Quality score (${score}) requires manual review (${thresholdConfig.needsReview}-${thresholdConfig.autoApproved - 1})`);
+    } else {
+      approvalStatus = 'REJECTED';
+      approved = false;
+      reasons.push(`Quality score (${score}) is below minimum threshold (${thresholdConfig.needsReview})`);
+    }
+
+    this._logEvaluation(movie.id, movie.title || movie.original_title, approvalStatus, score, reasons);
+
+    return this._buildResult(approved, approvalStatus, score, reasons);
+  }
+
+  /**
+   * Helper to format evaluation result object for both new and legacy consumers.
+   */
+  _buildResult(approved, approvalStatus, qualityScore, reasons) {
     let decision = 'REJECT';
-    if (score >= 70) {
+    if (qualityScore >= 70 || approvalStatus === 'AUTO_APPROVED') {
       decision = 'ACCEPT';
-    } else if (score >= 40) {
+    } else if (qualityScore >= 40 || approvalStatus === 'NEEDS_REVIEW') {
       decision = 'HOLD';
     }
 
-    return { decision, score };
+    return {
+      approved,
+      approvalStatus,
+      qualityScore,
+      reasons,
+      // Backwards compatibility fields
+      decision,
+      score: qualityScore
+    };
   }
 
-  isValid(movie, isStrict = false) {
-    if (!movie) return false;
-
-    // Reject adult content
-    if (movie.adult === true) return false;
-    
-    // Missing title
-    if (!movie.title && !movie.original_title) return false;
-    
-    // Invalid TMDB data
-    if (!movie.id) return false;
-
-    // Spam keywords
-    const titleToCheck = (movie.title || movie.original_title).toLowerCase();
-    for (const keyword of this.SPAM_KEYWORDS) {
-      if (titleToCheck.includes(keyword)) {
-        return false;
-      }
-    }
-
-    if (isStrict) {
-      // Missing poster and backdrop required only in strict mode
-      if (!movie.poster_path && !movie.backdrop_path) return false;
-    }
-
-    return true;
+  /**
+   * Structured logger for evaluation results.
+   */
+  _logEvaluation(tmdbId, title, status, score, reasons) {
+    const timestamp = new Date().toISOString();
+    const reasonText = reasons.length > 0 ? ` - Reasons: [${reasons.join(' | ')}]` : '';
+    console.log(`[QualityChecker] ${timestamp} | TMDB ID: ${tmdbId} | Title: "${title || 'N/A'}" | Status: ${status} | Score: ${score}${reasonText}`);
   }
 
+  // ==========================================
+  // HELPER EVALUATION METHODS
+  // ==========================================
   hasBackdrop(movie) { return !!movie.backdrop_path; }
-  hasGoodOverview(movie) { return !!(movie.overview && movie.overview.trim().length > 100); }
-  hasGenres(movie) { return !!(movie.genres && movie.genres.length > 0); }
-  hasCast(movie) { return !!(movie.credits && movie.credits.cast && movie.credits.cast.length > 0); }
-  hasDirector(movie) { return !!(movie.credits && movie.credits.crew && movie.credits.crew.some(c => c.job === 'Director')); }
-  hasProductionCompany(movie) { return !!(movie.production_companies && movie.production_companies.length > 0); }
-  hasImdbId(movie) { return !!(movie.imdb_id || (movie.external_ids && movie.external_ids.imdb_id)); }
-  hasTrailer(movie) { return !!(movie.videos && movie.videos.results && movie.videos.results.some(v => v.type === 'Trailer')); }
-  hasPopularity(movie) { return !!(movie.popularity && movie.popularity > 5); }
-  hasVoteCount(movie) { return !!(movie.vote_count && movie.vote_count > 100); }
+  hasGoodOverview(movie) { return !!(movie.overview && movie.overview.trim().length >= (config.qualityCheck.hardFilter.minOverviewLength || 50)); }
+  hasGenres(movie) { 
+    const list = movie.genres || movie.genre_ids;
+    return !!(list && list.length > 0); 
+  }
+  hasCast(movie) { 
+    const minCast = config.qualityCheck.weights.castMinCount || 5;
+    return !!(movie.credits && movie.credits.cast && movie.credits.cast.length >= minCast); 
+  }
+  hasDirector(movie) { 
+    return !!(movie.credits && movie.credits.crew && movie.credits.crew.some(c => c.job === 'Director')); 
+  }
+  hasProductionCompany(movie) { 
+    return !!(movie.production_companies && movie.production_companies.length > 0); 
+  }
+  hasImdbId(movie) { 
+    return !!(movie.imdb_id || (movie.external_ids && movie.external_ids.imdb_id)); 
+  }
+  hasTrailer(movie) { 
+    return !!(movie.videos && movie.videos.results && movie.videos.results.some(v => v.type === 'Trailer')); 
+  }
+  hasVietnameseLocalization(movie) {
+    if (movie.translations && movie.translations.translations) {
+      return movie.translations.translations.some(t => t.iso_639_1 === 'vi');
+    }
+    return false;
+  }
+  hasPopularity(movie) { 
+    const minPop = config.qualityCheck.weights.popularityMin || 5.0;
+    return !!(movie.popularity && movie.popularity >= minPop); 
+  }
+  hasVoteCount(movie) { 
+    const minVotes = config.qualityCheck.weights.voteCountMin || 50;
+    return !!(movie.vote_count && movie.vote_count >= minVotes); 
+  }
 }
 
 module.exports = new MovieQualityCheckerService();

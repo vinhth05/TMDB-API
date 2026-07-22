@@ -37,14 +37,14 @@ class MovieSyncService {
     const rawMovie = await this.fetchMovieRaw(tmdbId);
     if (!rawMovie) return null;
 
-    const quality = movieQualityChecker.evaluate(rawMovie, options);
+    const evalResult = movieQualityChecker.evaluate(rawMovie, options);
 
-    if (quality.decision === 'REJECT') {
+    if (evalResult.approvalStatus === 'REJECTED' && !options.includeRejected) {
       return null;
     }
 
     // Normalize
-    const normalized = normalizeData.normalizeSyncMovie(rawMovie, quality.score, quality.decision);
+    const normalized = normalizeData.normalizeSyncMovie(rawMovie, evalResult);
     return normalized;
   }
 
